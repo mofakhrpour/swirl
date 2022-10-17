@@ -1,34 +1,64 @@
-version: '3'
+version: '3.8'
 
 services:
   swirl:
-    image: cuigh/swirl
+    image: cuigh/swirl:0.8.5
+    #image: cuigh/swirl:1.0.0rc2
     environment:
-      DB_ADDRESS: mongo:27017/swirl
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    ports:
-      - 8001:8001
+      DB_ADDRESS: mongodb://mongo:27017/swirl
+      DOCKER_ENDPOINT: tcp://swirl_manager_agent:2375
+      AGENTS: swirl_manager_agent,swirl_worker_agent
     networks:
       - net
+    ports:
+      - "8001:8001"
     deploy:
       replicas: 1
       placement:
-        constraints: [node.role == manager]
+        constraints: [ node.role == worker ]
+
+  manager_agent:
+    image: cuigh/socat
+    networks:
+      - net
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    deploy:
+      mode: global
+      placement:
+        constraints: [ node.role == manager ]
+
+  worker_agent:
+    image: cuigh/socat
+    networks:
+      - net
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    deploy:
+      mode: global
+      placement:
+        constraints: [ node.role == worker ]
 
   mongo:
-    image: mongo
+    image: mongo:4.4.17
     volumes:
       - mongo:/data/db
     networks:
       - net
     deploy:
       replicas: 1
-#      placement:
-#        constraints: [node.hostname == mongo]
+      placement:
+        constraints: [ node.role == worker ]
 
 volumes:
   mongo:
+#  prometheus:
+
+#configs:
+#  prometheus.yml:
+#    external: true
 
 networks:
+#  host:
+#    external: true
   net:
